@@ -1,6 +1,6 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { z } from 'zod';
-import { ConflictError, NotFoundError } from './calc';
+import { ConflictError, NotFoundError } from '$lib/db/calc';
 
 /** Parses and validates a JSON request body; responds with 400 on failure. */
 export async function parseBody<T extends z.ZodType>(

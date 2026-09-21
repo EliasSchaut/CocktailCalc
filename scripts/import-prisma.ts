@@ -12,7 +12,7 @@
  * Runs directly with Node >= 22.18 (native type stripping), no build step needed.
  */
 import Database from 'better-sqlite3';
-import { createCalcService } from '../src/lib/server/calc.ts';
+import { createCalcService } from '../src/lib/db/calc.ts';
 import { createDb } from '../src/lib/server/db/client.ts';
 import {
   eventRecipes,
@@ -20,7 +20,7 @@ import {
   ingredients,
   recipeIngredients,
   recipes,
-} from '../src/lib/server/db/schema.ts';
+} from '../src/lib/db/schema.ts';
 
 type OldIngredient = { name: string; price: number; alcohol: boolean | number };
 type OldRecipe = {

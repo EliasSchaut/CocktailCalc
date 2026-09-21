@@ -20,12 +20,17 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "prepare": "svelte-kit sync || echo ''"
+    "prepare": "svelte-kit sync || echo ''",
+    "dev:app": "BUILD_TARGET=tauri vite dev"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.3",
+    "@tauri-apps/plugin-fs": "^2.5.2",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.3",
     "mode-watcher": "^1.1.0",
+    "sql.js": "^1.14.2",
     "svelte-dnd-action": "^0.9.79",
     "zod": "^4.6.5"
   },
@@ -39,6 +44,7 @@
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24",
     "@types/pg": "^8",
+    "@types/sql.js": "^1.4.11",
     "drizzle-kit": "^0.31.11",
     "pg": "^8",
     "prettier": "^3.9.8",
