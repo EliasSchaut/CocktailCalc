@@ -23,6 +23,7 @@ All mutating operations run in a transaction so prices are always consistent.
 */
 
 export class NotFoundError extends Error {}
+export class ConflictError extends Error {}
 
 const byName = <T extends { name: string }>(a: T, b: T) =>
   a.name.localeCompare(b.name);
@@ -316,6 +317,96 @@ export function createCalcService(db: Db) {
     return { ingredients: list, price: event.price };
   }
 
+  // ---------- rename ----------
+  // Names are primary keys referenced by the junction tables (no ON UPDATE CASCADE),
+  // so a rename copies the row under the new name, re-points the references and
+  // removes the old row, all inside one transaction.
+
+  function assertRename(
+    table: 'ingredient' | 'recipe' | 'event',
+    oldName: string,
+    newName: string,
+  ) {
+    if (oldName === newName)
+      throw new ConflictError(`new name equals the old name`);
+    const t = { ingredient: ingredients, recipe: recipes, event: events }[
+      table
+    ];
+    if (db.select({ name: t.name }).from(t).where(eq(t.name, newName)).get()) {
+      throw new ConflictError(`${table} "${newName}" already exists`);
+    }
+  }
+
+  function renameIngredient(oldName: string, newName: string): Ingredient {
+    return db.transaction(() => {
+      assertRename('ingredient', oldName, newName);
+      const row = db
+        .select()
+        .from(ingredients)
+        .where(eq(ingredients.name, oldName))
+        .get();
+      if (!row) throw new NotFoundError(`ingredient "${oldName}" not found`);
+      db.insert(ingredients)
+        .values({ ...row, name: newName })
+        .run();
+      db.update(recipeIngredients)
+        .set({ ingredientName: newName })
+        .where(eq(recipeIngredients.ingredientName, oldName))
+        .run();
+      db.delete(ingredients).where(eq(ingredients.name, oldName)).run();
+      return { ...row, name: newName };
+    });
+  }
+
+  function renameRecipe(
+    oldName: string,
+    newName: string,
+  ): RecipeWithIngredients {
+    return db.transaction(() => {
+      assertRename('recipe', oldName, newName);
+      const row = db
+        .select()
+        .from(recipes)
+        .where(eq(recipes.name, oldName))
+        .get();
+      if (!row) throw new NotFoundError(`recipe "${oldName}" not found`);
+      db.insert(recipes)
+        .values({ ...row, name: newName })
+        .run();
+      db.update(recipeIngredients)
+        .set({ recipeName: newName })
+        .where(eq(recipeIngredients.recipeName, oldName))
+        .run();
+      db.update(eventRecipes)
+        .set({ recipeName: newName })
+        .where(eq(eventRecipes.recipeName, oldName))
+        .run();
+      db.delete(recipes).where(eq(recipes.name, oldName)).run();
+      return findRecipe(newName);
+    });
+  }
+
+  function renameEvent(oldName: string, newName: string): EventWithRecipes {
+    return db.transaction(() => {
+      assertRename('event', oldName, newName);
+      const row = db
+        .select()
+        .from(events)
+        .where(eq(events.name, oldName))
+        .get();
+      if (!row) throw new NotFoundError(`event "${oldName}" not found`);
+      db.insert(events)
+        .values({ ...row, name: newName })
+        .run();
+      db.update(eventRecipes)
+        .set({ eventName: newName })
+        .where(eq(eventRecipes.eventName, oldName))
+        .run();
+      db.delete(events).where(eq(events.name, oldName)).run();
+      return findEvent(newName);
+    });
+  }
+
   // ---------- export / import ----------
 
   /** Dumps all data (prices of recipes/events are derived and therefore omitted). */
@@ -409,6 +500,9 @@ export function createCalcService(db: Db) {
   }
 
   return {
+    renameIngredient,
+    renameRecipe,
+    renameEvent,
     exportAll,
     importAll,
     getIngredients,

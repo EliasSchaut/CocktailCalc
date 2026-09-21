@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { call_ingredient_upsert } from '$lib/api';
+  import { call_ingredient_rename, call_ingredient_upsert } from '$lib/api';
   import CardIngredient from '$lib/components/CardIngredient.svelte';
   import MinusButton from '$lib/components/button/MinusButton.svelte';
   import PlusButton from '$lib/components/button/PlusButton.svelte';
@@ -46,6 +46,12 @@
     if (ingredient) ingredient.alcohol = alcohol;
   }
 
+  async function renameIngredient(name: string, newName: string) {
+    await call_ingredient_rename(name, newName);
+    const ingredient = findIngredient(name);
+    if (ingredient) ingredient.name = newName;
+  }
+
   function deleteIngredient(name: string) {
     ingredients = ingredients.filter((i) => i.name !== name);
   }
@@ -74,6 +80,7 @@
         onupdatePrice={updatePrice}
         onupdateAlcohol={updateAlcohol}
         ondelete={deleteIngredient}
+        onrename={renameIngredient}
       />
     {/each}
   </Grid>

@@ -141,3 +141,18 @@ export const call_export = () => call_api<DataExport>(Method.GET, '/export');
 
 export const call_import = (data: DataExport, mode: 'merge' | 'replace') =>
   call_api<ImportResult>(Method.POST, `/import?mode=${mode}`, data);
+
+// -------------------
+// Rename
+// -------------------
+export const call_ingredient_rename = (name: string, newName: string) =>
+  call_api<Ingredient>(Method.POST, '/ingredient/rename', { name, newName });
+
+export const call_recipe_rename = (name: string, newName: string) =>
+  call_api<RecipeWithIngredients>(Method.POST, '/recipe/rename', {
+    name,
+    newName,
+  });
+
+export const call_event_rename = (name: string, newName: string) =>
+  call_api<EventWithRecipes>(Method.POST, '/event/rename', { name, newName });

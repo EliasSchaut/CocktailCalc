@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { call_event_upsert } from '$lib/api';
+  import { call_event_rename, call_event_upsert } from '$lib/api';
   import CardEvent from '$lib/components/CardEvent.svelte';
   import MinusButton from '$lib/components/button/MinusButton.svelte';
   import PlusButton from '$lib/components/button/PlusButton.svelte';
@@ -36,6 +36,12 @@
   function updatePrice(name: string, price: number) {
     const event = findEvent(name);
     if (event) event.price = price;
+  }
+
+  async function renameEvent(name: string, newName: string) {
+    await call_event_rename(name, newName);
+    const event = findEvent(name);
+    if (event) event.name = newName;
   }
 
   function deleteEvent(name: string) {
@@ -85,6 +91,7 @@
         alcoholicRecipes={data.alcoholicRecipes}
         onupdatePrice={updatePrice}
         ondelete={deleteEvent}
+        onrename={renameEvent}
         onupsertRecipe={upsertEventRecipe}
         ondeleteRecipe={deleteEventRecipe}
       />

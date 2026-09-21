@@ -31,6 +31,7 @@
     onupdatePrice,
     onupdateAlcohol,
     ondelete,
+    onrename,
     onupsertIngredient,
     ondeleteIngredient,
   }: {
@@ -43,6 +44,7 @@
     onupdatePrice: (name: string, price: number) => void;
     onupdateAlcohol: (name: string, alcohol: boolean) => void;
     ondelete: (name: string) => void;
+    onrename: (name: string, newName: string) => Promise<void>;
     onupsertIngredient: (upsert: UpsertIngredient) => void;
     ondeleteIngredient: (del: DeleteIngredient) => void;
   } = $props();
@@ -84,7 +86,11 @@
 
 <Card ondelete={deleteRecipe} hasAlcohol={alcohol}>
   <div class="flex h-full flex-col items-center justify-between gap-y-2">
-    <CardTitle title="{name} ({price.toFixed(2)}€)" />
+    <CardTitle
+      title={name}
+      suffix="({price.toFixed(2)}€)"
+      onrename={(n) => onrename(name, n)}
+    />
     <ul class="mt-2 flex w-full grow flex-col justify-between gap-y-1">
       {#each ingredients as ingredient (ingredient.name)}
         <li>

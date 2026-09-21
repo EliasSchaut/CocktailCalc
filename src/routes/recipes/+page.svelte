@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { call_recipe_upsert } from '$lib/api';
+  import { call_recipe_rename, call_recipe_upsert } from '$lib/api';
   import CardRecipe from '$lib/components/CardRecipe.svelte';
   import MinusButton from '$lib/components/button/MinusButton.svelte';
   import PlusButton from '$lib/components/button/PlusButton.svelte';
@@ -40,6 +40,12 @@
   function updateAlcohol(name: string, alcohol: boolean) {
     const recipe = findRecipe(name);
     if (recipe) recipe.alcohol = alcohol;
+  }
+
+  async function renameRecipe(name: string, newName: string) {
+    await call_recipe_rename(name, newName);
+    const recipe = findRecipe(name);
+    if (recipe) recipe.name = newName;
   }
 
   function deleteRecipe(name: string) {
@@ -98,6 +104,7 @@
         onupdatePrice={updatePrice}
         onupdateAlcohol={updateAlcohol}
         ondelete={deleteRecipe}
+        onrename={renameRecipe}
         onupsertIngredient={upsertRecipeIngredient}
         ondeleteIngredient={deleteRecipeIngredient}
       />
