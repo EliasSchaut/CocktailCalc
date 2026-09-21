@@ -82,6 +82,7 @@
         price={event.price}
         recipes={event.recipes}
         recipeNames={data.recipeNames}
+        alcoholicRecipes={data.alcoholicRecipes}
         onupdatePrice={updatePrice}
         ondelete={deleteEvent}
         onupsertRecipe={upsertEventRecipe}

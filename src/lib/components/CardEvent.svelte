@@ -28,6 +28,7 @@
     price,
     recipes,
     recipeNames,
+    alcoholicRecipes = [],
     onupdatePrice,
     ondelete,
     onupsertRecipe,
@@ -38,6 +39,8 @@
     recipes: RecipeWithAmount[];
     /** names of all recipes, selectable to add to the event */
     recipeNames: string[];
+    /** names of recipes containing alcohol, shown in red */
+    alcoholicRecipes?: string[];
     onupdatePrice: (name: string, price: number) => void;
     ondelete: (name: string) => void;
     onupsertRecipe: (upsert: UpsertRecipe) => void;
@@ -107,7 +110,12 @@
             onsubmit={(e) => e.preventDefault()}
             class="flex items-center gap-x-3"
           >
-            <ItemTitle title={recipe.name} />
+            <ItemTitle
+              title={recipe.name}
+              class={alcoholicRecipes.includes(recipe.name)
+                ? 'text-red-600 dark:text-red-400'
+                : ''}
+            />
             <AmountInput
               class="w-16"
               value={recipe.amount}
