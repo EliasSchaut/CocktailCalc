@@ -48,6 +48,15 @@
     if (recipe) recipe.name = newName;
   }
 
+  function reorderIngredients(name: string, order: string[]) {
+    const recipe = findRecipe(name);
+    if (!recipe) return;
+    const pos = new Map(order.map((n, i) => [n, i]));
+    recipe.ingredients = [...recipe.ingredients].sort(
+      (a, b) => (pos.get(a.name) ?? Infinity) - (pos.get(b.name) ?? Infinity),
+    );
+  }
+
   function deleteRecipe(name: string) {
     recipes = recipes.filter((r) => r.name !== name);
   }
@@ -105,6 +114,7 @@
         onupdateAlcohol={updateAlcohol}
         ondelete={deleteRecipe}
         onrename={renameRecipe}
+        onreorder={reorderIngredients}
         onupsertIngredient={upsertRecipeIngredient}
         ondeleteIngredient={deleteRecipeIngredient}
       />

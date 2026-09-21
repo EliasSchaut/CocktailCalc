@@ -34,6 +34,7 @@ pnpm tauri:dev|build
 ## Rules
 
 - Prices: ingredients in €/l, recipe ingredient amounts in cl, recipe/event prices are **denormalised**. Every mutation must go through the service so `updateRecipePrice`/`updateEventPrice` keep them in sync.
+- Junction tables carry a `position` column (1-based creation order, reorderable via drag and drop with `svelte-dnd-action`); new rows get `max+1`, import assigns array index.
 - Keep API paths/bodies stable; the Tauri app talks to a deployed server via `PUBLIC_API_BASE`.
 - Server-only code lives in `src/lib/server`; files imported by `scripts/` need explicit `.ts` import extensions.
 - Svelte 5 only: `$props`, `$state`, `$derived`, callback props instead of events, `onclick` attributes.

@@ -33,6 +33,8 @@ export const recipeIngredients = sqliteTable(
       .notNull()
       .references(() => ingredients.name, { onDelete: 'cascade' }),
     amount: real('amount').notNull(),
+    /** display order inside the recipe (1-based, creation order by default) */
+    position: integer('position').notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.recipeName, t.ingredientName] })],
 );
@@ -52,6 +54,8 @@ export const eventRecipes = sqliteTable(
       .notNull()
       .references(() => recipes.name, { onDelete: 'cascade' }),
     amount: integer('amount').notNull(),
+    /** display order inside the event (1-based, creation order by default) */
+    position: integer('position').notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.eventName, t.recipeName] })],
 );
