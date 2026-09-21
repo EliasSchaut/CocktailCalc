@@ -8,12 +8,11 @@ A web app to calculate cocktails (ingredients, prices, buying lists) for specifi
 
 Copy `.env.example` to `.env` and adjust the values:
 
-| Variable          | Default        | Description                                                                            |
-| ----------------- | -------------- | -------------------------------------------------------------------------------------- |
-| `PORT`            | `3000`         | Port of the production server (`node build`)                                           |
-| `ORIGIN`          | –              | Public origin of the production server, e.g. `https://cocktail.kuhlt.de`               |
-| `DATABASE_URL`    | `./db.sqlite3` | Path to the SQLite file. Created and migrated automatically on start                   |
-| `PUBLIC_API_BASE` | _(empty)_      | Base URL of the API for the frontend. Empty = same origin. Set for the Tauri app build |
+| Variable       | Default        | Description                                                              |
+| -------------- | -------------- | ------------------------------------------------------------------------ |
+| `PORT`         | `3000`         | Port of the production server (`node build`)                             |
+| `ORIGIN`       | –              | Public origin of the production server, e.g. `https://cocktail.kuhlt.de` |
+| `DATABASE_URL` | `./db.sqlite3` | Path to the SQLite file. Created and migrated automatically on start     |
 
 ## Development
 
@@ -75,16 +74,16 @@ The image runs as the unprivileged `node` user, stores the SQLite file under `/d
 
 ## Desktop / mobile app (Tauri)
 
-The app is a thin shell: the SvelteKit frontend is bundled statically and talks to a hosted server via the REST API under `/api`.
+The app works **offline and standalone**: the same SvelteKit frontend runs inside a Tauri window with its own SQLite database (sql.js/WebAssembly, persisted as `cocktailcalc.db` in the app data directory). The business logic in `src/lib/db/calc.ts` is shared with the server, only the API layer differs (`src/lib/local/api.ts` instead of HTTP). Data can be moved between the web app and the desktop app with export/import.
 
 Requirements: [Rust](https://rustup.rs) and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
 
 ```sh
-PUBLIC_API_BASE=https://cocktail.kuhlt.de pnpm tauri:dev     # dev window
-PUBLIC_API_BASE=https://cocktail.kuhlt.de pnpm tauri:build   # bundles in src-tauri/target/release/bundle
+pnpm tauri:dev     # dev window
+pnpm tauri:build   # bundles in src-tauri/target/release/bundle
 ```
 
-`pnpm build:app` alone produces the static frontend (`build/`) used by Tauri.
+`pnpm build:app` alone produces the static SPA (`build/`) used by Tauri. Opened in a normal browser it stores its data in IndexedDB instead.
 
 ## API
 

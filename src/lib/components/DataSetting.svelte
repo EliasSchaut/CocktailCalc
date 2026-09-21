@@ -1,6 +1,7 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
   import { call_export, call_import } from '$lib/api';
+  import { saveTextFile } from '$lib/download';
   import Icon from '$lib/icons/Icon.svelte';
   import { ArrowDownTray, ArrowUpTray, CircleStack } from '$lib/icons';
   import type { DataExport } from '$lib/types';
@@ -24,15 +25,11 @@
 
   async function exportData() {
     const data = await call_export();
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cocktailcalc-${(data.exportedAt ?? new Date().toISOString()).slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const date = (data.exportedAt ?? new Date().toISOString()).slice(0, 10);
+    await saveTextFile(
+      `cocktailcalc-${date}.json`,
+      JSON.stringify(data, null, 2),
+    );
   }
 
   async function fileSelected(e: Event) {

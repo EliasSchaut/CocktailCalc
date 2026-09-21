@@ -2,16 +2,40 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ConflictError,
   createCalcService,
+  type Db,
   NotFoundError,
   type CalcService,
 } from './calc.ts';
-import { createDb } from './db/client.ts';
+import { drizzle as drizzleSqlJs } from 'drizzle-orm/sql-js';
+import initSqlJs from 'sql.js';
+import { createDb } from '../server/db/client.ts';
+import { applyMigrations } from './migrations.ts';
+import * as schema from './schema.ts';
 
-describe('calc service', () => {
+// The service must behave identically on the server (better-sqlite3) and in the
+// app (sql.js with bundled migrations), so the whole suite runs against both.
+const SQL = await initSqlJs();
+const drivers: [string, () => Db][] = [
+  ['better-sqlite3', () => createDb(':memory:')],
+  [
+    'sql.js',
+    () => {
+      const sqlite = new SQL.Database();
+      sqlite.run('PRAGMA foreign_keys = ON');
+      const db = drizzleSqlJs(sqlite, { schema });
+      applyMigrations(db);
+      return db;
+    },
+  ],
+];
+
+describe.each(drivers)('calc service (%s)', (_driver, makeDb) => {
   let calc: CalcService;
+  let createDb: () => Db;
 
   beforeEach(() => {
-    calc = createCalcService(createDb(':memory:'));
+    createDb = makeDb;
+    calc = createCalcService(createDb());
   });
 
   it('calculates recipe and event prices with cascading updates', () => {
@@ -119,7 +143,7 @@ describe('calc service', () => {
     ]);
 
     // merge into a fresh db with conflicting data -> prices are recalculated
-    const other = createCalcService(createDb(':memory:'));
+    const other = createCalcService(createDb());
     other.addIngredient('Rum', 999, true);
     other.addRecipe('Mojito', '');
     expect(other.importAll(dump)).toEqual({
@@ -229,7 +253,7 @@ describe('calc service', () => {
 
     // export keeps the order and import restores it
     const dump = calc.exportAll();
-    const other = createCalcService(createDb(':memory:'));
+    const other = createCalcService(createDb());
     other.importAll(dump);
     expect(other.findRecipe('R').ingredients.map((i) => i.name)).toEqual([
       'A',

@@ -1,12 +1,13 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
-import type { Db } from './db/client.ts';
+import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
+import * as schema from './schema.ts';
 import {
   eventRecipes,
   events,
   ingredients,
   recipeIngredients,
   recipes,
-} from './db/schema.ts';
+} from './schema.ts';
 import type {
   DataExport,
   EventList,
@@ -21,6 +22,10 @@ Note: It is important to update the prices whenever an operation may change them
 This is done via `updateRecipePrice` (which also updates event prices) and `updateEventPrice`.
 All mutating operations run in a transaction so prices are always consistent.
 */
+
+/** Any synchronous Drizzle SQLite database (better-sqlite3 on the server, sql.js in the app). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Db = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 export class NotFoundError extends Error {}
 export class ConflictError extends Error {}
@@ -165,56 +170,67 @@ export function createCalcService(db: Db) {
   function deleteIngredient(name: string): void {
     db.transaction(() => {
       const affected = recipesUsingIngredient(name);
-      const deleted = db
-        .delete(ingredients)
-        .where(eq(ingredients.name, name))
-        .run();
-      if (deleted.changes === 0)
+      if (
+        !db
+          .select({ name: ingredients.name })
+          .from(ingredients)
+          .where(eq(ingredients.name, name))
+          .get()
+      ) {
         throw new NotFoundError(`ingredient "${name}" not found`);
+      }
+      db.delete(ingredients).where(eq(ingredients.name, name)).run();
       for (const recipe of affected) updateRecipePrice(recipe);
     });
   }
 
   // ---------- recipes ----------
 
-  function toRecipe(row: {
-    name: string;
-    description: string | null;
-    price: number;
-    alcohol: boolean;
-    ingredients: { ingredientName: string; amount: number }[];
-  }): RecipeWithIngredients {
-    return {
-      name: row.name,
-      description: row.description,
-      price: row.price,
-      alcohol: row.alcohol,
-      ingredients: row.ingredients.map((i) => ({
-        name: i.ingredientName,
-        amount: i.amount,
-      })),
-    };
+  /** Loads recipes (all, or the ones matching `where`) with their ingredients in display order. */
+  function loadRecipes(where?: SQL): RecipeWithIngredients[] {
+    const rows = db
+      .select()
+      .from(recipes)
+      .where(where)
+      .orderBy(asc(recipes.name))
+      .all();
+    if (rows.length === 0) return [];
+    const parts = db
+      .select({
+        recipeName: recipeIngredients.recipeName,
+        name: recipeIngredients.ingredientName,
+        amount: recipeIngredients.amount,
+      })
+      .from(recipeIngredients)
+      .where(
+        where
+          ? inArray(
+              recipeIngredients.recipeName,
+              rows.map((r) => r.name),
+            )
+          : undefined,
+      )
+      .orderBy(asc(recipeIngredients.position))
+      .all();
+    return rows.map((r) => ({
+      name: r.name,
+      description: r.description,
+      price: r.price,
+      alcohol: r.alcohol,
+      ingredients: parts
+        .filter((p) => p.recipeName === r.name)
+        .map(({ name, amount }) => ({ name, amount })),
+    }));
   }
 
   function getRecipes(): RecipeWithIngredients[] {
-    return db.query.recipes
-      .findMany({
-        with: { ingredients: { orderBy: asc(recipeIngredients.position) } },
-        orderBy: asc(recipes.name),
-      })
-      .sync()
-      .map(toRecipe);
+    return loadRecipes();
   }
 
   function findRecipe(name: string): RecipeWithIngredients {
-    const row = db.query.recipes
-      .findFirst({
-        where: eq(recipes.name, name),
-        with: { ingredients: { orderBy: asc(recipeIngredients.position) } },
-      })
-      .sync();
-    if (!row) throw new NotFoundError(`recipe "${name}" not found`);
-    return toRecipe(row);
+    const [recipe] = loadRecipes(eq(recipes.name, name));
+    if (!recipe) throw new NotFoundError(`recipe "${name}" not found`);
+    return recipe;
   }
 
   function addRecipe(name: string, description: string): RecipeWithIngredients {
@@ -257,9 +273,16 @@ export function createCalcService(db: Db) {
   function deleteRecipe(name: string): void {
     db.transaction(() => {
       const affected = eventsUsingRecipe(name);
-      const deleted = db.delete(recipes).where(eq(recipes.name, name)).run();
-      if (deleted.changes === 0)
+      if (
+        !db
+          .select({ name: recipes.name })
+          .from(recipes)
+          .where(eq(recipes.name, name))
+          .get()
+      ) {
         throw new NotFoundError(`recipe "${name}" not found`);
+      }
+      db.delete(recipes).where(eq(recipes.name, name)).run();
       for (const event of affected) updateEventPrice(event);
     });
   }
@@ -284,40 +307,49 @@ export function createCalcService(db: Db) {
 
   // ---------- events ----------
 
-  function toEvent(row: {
-    name: string;
-    price: number;
-    recipes: { recipeName: string; amount: number }[];
-  }): EventWithRecipes {
-    return {
-      name: row.name,
-      price: row.price,
-      recipes: row.recipes.map((r) => ({
-        name: r.recipeName,
-        amount: r.amount,
-      })),
-    };
+  /** Loads events (all, or the ones matching `where`) with their recipes in display order. */
+  function loadEvents(where?: SQL): EventWithRecipes[] {
+    const rows = db
+      .select()
+      .from(events)
+      .where(where)
+      .orderBy(asc(events.name))
+      .all();
+    if (rows.length === 0) return [];
+    const parts = db
+      .select({
+        eventName: eventRecipes.eventName,
+        name: eventRecipes.recipeName,
+        amount: eventRecipes.amount,
+      })
+      .from(eventRecipes)
+      .where(
+        where
+          ? inArray(
+              eventRecipes.eventName,
+              rows.map((e) => e.name),
+            )
+          : undefined,
+      )
+      .orderBy(asc(eventRecipes.position))
+      .all();
+    return rows.map((e) => ({
+      name: e.name,
+      price: e.price,
+      recipes: parts
+        .filter((p) => p.eventName === e.name)
+        .map(({ name, amount }) => ({ name, amount })),
+    }));
   }
 
   function getEvents(): EventWithRecipes[] {
-    return db.query.events
-      .findMany({
-        with: { recipes: { orderBy: asc(eventRecipes.position) } },
-        orderBy: asc(events.name),
-      })
-      .sync()
-      .map(toEvent);
+    return loadEvents();
   }
 
   function findEvent(name: string): EventWithRecipes {
-    const row = db.query.events
-      .findFirst({
-        where: eq(events.name, name),
-        with: { recipes: { orderBy: asc(eventRecipes.position) } },
-      })
-      .sync();
-    if (!row) throw new NotFoundError(`event "${name}" not found`);
-    return toEvent(row);
+    const [event] = loadEvents(eq(events.name, name));
+    if (!event) throw new NotFoundError(`event "${name}" not found`);
+    return event;
   }
 
   function addEvent(name: string): EventWithRecipes {
@@ -352,9 +384,16 @@ export function createCalcService(db: Db) {
   }
 
   function deleteEvent(name: string): void {
-    const deleted = db.delete(events).where(eq(events.name, name)).run();
-    if (deleted.changes === 0)
+    if (
+      !db
+        .select({ name: events.name })
+        .from(events)
+        .where(eq(events.name, name))
+        .get()
+    ) {
       throw new NotFoundError(`event "${name}" not found`);
+    }
+    db.delete(events).where(eq(events.name, name)).run();
   }
 
   function deleteEventRecipe(event: string, recipe: string): EventWithRecipes {
@@ -374,23 +413,29 @@ export function createCalcService(db: Db) {
 
   /** Buying list for an event; amounts are in litres. */
   function getEventList(name: string): EventList {
-    const event = db.query.events
-      .findFirst({
-        where: eq(events.name, name),
-        with: {
-          recipes: { with: { recipe: { with: { ingredients: true } } } },
-        },
-      })
-      .sync();
+    const event = db.select().from(events).where(eq(events.name, name)).get();
     if (!event) throw new NotFoundError(`event "${name}" not found`);
 
+    const rows = db
+      .select({
+        ingredient: recipeIngredients.ingredientName,
+        cl: recipeIngredients.amount,
+        count: eventRecipes.amount,
+      })
+      .from(eventRecipes)
+      .innerJoin(
+        recipeIngredients,
+        eq(recipeIngredients.recipeName, eventRecipes.recipeName),
+      )
+      .where(eq(eventRecipes.eventName, name))
+      .all();
+
     const amounts = new Map<string, number>();
-    for (const cocktail of event.recipes) {
-      for (const ingredient of cocktail.recipe.ingredients) {
-        const old = amounts.get(ingredient.ingredientName) ?? 0;
-        const litres = (cocktail.amount * ingredient.amount) / 100;
-        amounts.set(ingredient.ingredientName, old + litres);
-      }
+    for (const r of rows) {
+      amounts.set(
+        r.ingredient,
+        (amounts.get(r.ingredient) ?? 0) + (r.count * r.cl) / 100,
+      );
     }
     const list = Array.from(amounts.entries())
       .filter(([, amount]) => amount > 0)
