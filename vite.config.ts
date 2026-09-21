@@ -4,7 +4,10 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
-  const isTauri = env.BUILD_TARGET === 'tauri';
+  // `vite build --mode tauri` (cross-platform) or BUILD_TARGET=tauri select the app build;
+  // svelte.config.js reads BUILD_TARGET to pick the static adapter.
+  const isTauri = mode === 'tauri' || env.BUILD_TARGET === 'tauri';
+  if (isTauri) process.env.BUILD_TARGET = 'tauri';
 
   return {
     plugins: [tailwindcss(), sveltekit()],
