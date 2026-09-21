@@ -85,6 +85,10 @@ pnpm tauri:build   # bundles in src-tauri/target/release/bundle
 
 `pnpm build:app` alone produces the static SPA (`build/`) used by Tauri. Opened in a normal browser it stores its data in IndexedDB instead.
 
+### Releases
+
+Pushing a tag `v*` (e.g. `v0.2.0`, matching the version in `src-tauri/tauri.conf.json`) runs `.github/workflows/release.yml`, which builds the app for macOS (universal), Linux (`.deb`, `.rpm`, `.AppImage`) and Windows (`.msi`, `.exe`) and attaches everything to a **draft** GitHub release. Review and publish the draft on GitHub. The bundles are not code-signed.
+
 ## API
 
 All endpoints are below `/api` and accept/return JSON:
