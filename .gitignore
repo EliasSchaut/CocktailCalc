@@ -99,7 +99,7 @@ typings/
 
 # DB Local files
 .dynamodb/
-db.*
+/db.sqlite3*
 *.db
 
 # TernJS port file
