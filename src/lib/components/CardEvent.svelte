@@ -145,6 +145,8 @@
           dragDisabled,
           flipDurationMs: 150,
           dropTargetStyle: {},
+          // unique type per card so rows cannot be dropped into another event
+          type: `event:${name}`,
         }}
         onconsider={consider}
         onfinalize={finalize}

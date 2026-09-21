@@ -127,6 +127,8 @@
           dragDisabled,
           flipDurationMs: 150,
           dropTargetStyle: {},
+          // unique type per card so rows cannot be dropped into another recipe
+          type: `recipe:${name}`,
         }}
         onconsider={consider}
         onfinalize={finalize}
