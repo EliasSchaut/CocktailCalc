@@ -27,7 +27,7 @@ pnpm test         # unit tests (vitest)
 pnpm format       # prettier
 ```
 
-Under the database icon in the navigation all data can be exported to a JSON file and imported again (merge or replace).
+The buying list of an event can be copied as a Markdown task list via the clipboard icon next to "Zutaten". Under the database icon in the navigation all data can be exported to a JSON file and imported again (merge or replace).
 
 Amounts are in **cl** (recipes) and **pieces** (events), ingredient prices in **€/l**, buying lists in **l**.
 

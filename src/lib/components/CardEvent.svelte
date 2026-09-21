@@ -5,6 +5,9 @@
     call_event_ingredient_list,
     call_event_upsert_recipe,
   } from '$lib/api';
+  import Icon from '$lib/icons/Icon.svelte';
+  import { Check, ClipboardDocument } from '$lib/icons';
+  import { shoppingListMarkdown } from '$lib/shoppingList';
   import type { IngredientWithAmount, RecipeWithAmount } from '$lib/types';
   import Card from './Card.svelte';
   import CardTitle from './CardTitle.svelte';
@@ -42,6 +45,7 @@
   } = $props();
 
   let ingredientList: IngredientWithAmount[] = $state([]);
+  let copied = $state(false);
   const amountSum = $derived(recipes.reduce((acc, r) => acc + r.amount, 0));
 
   $effect(() => {
@@ -50,6 +54,14 @@
 
   async function updateIngredientList() {
     ingredientList = (await call_event_ingredient_list(name)).ingredients;
+  }
+
+  async function copyShoppingList() {
+    await navigator.clipboard.writeText(
+      shoppingListMarkdown(name, price, ingredientList),
+    );
+    copied = true;
+    setTimeout(() => (copied = false), 1500);
   }
 
   async function deleteEvent() {
@@ -128,7 +140,23 @@
           <PlusButton class="ml-4" type="submit" title="Rezept hinzufügen" />
         </form>
         {#if recipes.length > 0}
-          <LineSeparator class="my-3" title="Zutaten" />
+          <div class="my-3 flex items-center gap-x-2">
+            <LineSeparator title="Zutaten" />
+            <button
+              type="button"
+              class="shrink-0 rounded-md p-1 hover:bg-secondary-100 dark:hover:bg-secondary-800"
+              title={copied ? 'Kopiert' : 'Einkaufsliste als Markdown kopieren'}
+              aria-label="Einkaufsliste als Markdown kopieren"
+              onclick={copyShoppingList}
+            >
+              <Icon
+                icon={copied ? Check : ClipboardDocument}
+                class="h-5 w-5 {copied
+                  ? 'text-green-600'
+                  : 'text-secondary-500 dark:text-secondary-400'}"
+              />
+            </button>
+          </div>
           <div class="flex flex-col gap-y-3">
             {#each ingredientList as ingredient (ingredient.name)}
               <div class="flex items-center justify-between">
