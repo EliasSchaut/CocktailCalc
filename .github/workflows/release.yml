@@ -57,7 +57,9 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - run: pnpm install --frozen-lockfile
+      # --ignore-scripts: the app does not need the native better-sqlite3 module
+      # (server only) and node-gyp has no working toolchain on the Windows runner
+      - run: pnpm install --frozen-lockfile --ignore-scripts
 
       # runs `tauri build` (including beforeBuildCommand `pnpm build:app`) and
       # uploads the bundles to the release
