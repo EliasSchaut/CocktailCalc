@@ -2,7 +2,7 @@
  * One-off import of data from the old Prisma database (Postgres or SQLite)
  * into the new Drizzle/SQLite database.
  *
- * Usage:
+ * Usage (variables can also be set in .env, which `pnpm db:import` loads):
  *   OLD_DATABASE_URL=postgresql://user:pass@host:5432/db pnpm db:import
  *   OLD_DATABASE_URL=file:./old.sqlite3                   pnpm db:import
  *
@@ -182,7 +182,18 @@ async function main() {
   console.log('Done.');
 }
 
-main().catch((e) => {
+main().catch((e: unknown) => {
+  const code = (e as { code?: string }).code;
+  if (code === '42501') {
+    console.error(
+      'Permission denied: the database user needs SELECT on the old tables, e.g. as owner:\n' +
+        '  GRANT SELECT ON "Ingredient","Recipe","IngredientAmount","Event","RecipeAmount" TO <user>;',
+    );
+  } else if (code === '42P01') {
+    console.error(
+      'Old tables not found in this database (expected "Ingredient", "Recipe", …).',
+    );
+  }
   console.error(e);
   process.exit(1);
 });

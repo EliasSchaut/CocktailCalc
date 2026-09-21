@@ -49,7 +49,7 @@ OLD_DATABASE_URL=postgresql://user:pass@host:5432/cocktailcalc pnpm db:import
 OLD_DATABASE_URL=file:./old.sqlite3 pnpm db:import
 ```
 
-The target is `DATABASE_URL`. The import is idempotent and recalculates all prices.
+Both variables can also be set in `.env`. The target is `DATABASE_URL`. The import is idempotent and recalculates all prices.
 
 ## Production (web)
 
