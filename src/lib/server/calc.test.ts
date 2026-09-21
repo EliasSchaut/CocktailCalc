@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createCalcService, NotFoundError, type CalcService } from './calc.ts';
+import {
+  ConflictError,
+  createCalcService,
+  NotFoundError,
+  type CalcService,
+} from './calc.ts';
 import { createDb } from './db/client.ts';
 
 describe('calc service', () => {
@@ -134,5 +139,52 @@ describe('calc service', () => {
     expect(other.getIngredients().find((i) => i.name === 'Rum')?.price).toBe(
       20,
     );
+  });
+
+  it('renames items and keeps references and prices', () => {
+    calc.addIngredient('Rum', 20, true);
+    calc.addRecipe('Cuba Libre', 'classic');
+    calc.addIngredientAmount('Cuba Libre', 'Rum', 5);
+    calc.addEvent('Party');
+    calc.addEventRecipe('Party', 'Cuba Libre', 10);
+
+    expect(calc.renameIngredient('Rum', 'Havana')).toEqual({
+      name: 'Havana',
+      price: 20,
+      alcohol: true,
+    });
+    expect(calc.findRecipe('Cuba Libre').ingredients).toEqual([
+      { name: 'Havana', amount: 5 },
+    ]);
+
+    const recipe = calc.renameRecipe('Cuba Libre', 'Havana Libre');
+    expect(recipe.name).toBe('Havana Libre');
+    expect(recipe.price).toBeCloseTo(1);
+    expect(recipe.ingredients).toEqual([{ name: 'Havana', amount: 5 }]);
+    expect(calc.findEvent('Party').recipes).toEqual([
+      { name: 'Havana Libre', amount: 10 },
+    ]);
+
+    const event = calc.renameEvent('Party', 'Fest');
+    expect(event).toEqual({
+      name: 'Fest',
+      price: 10,
+      recipes: [{ name: 'Havana Libre', amount: 10 }],
+    });
+    expect(calc.getEvents()).toHaveLength(1);
+    expect(calc.getEventList('Fest').ingredients).toEqual([
+      { name: 'Havana', amount: 0.5 },
+    ]);
+
+    calc.addIngredient('Cola', 2, false);
+    expect(() => calc.renameIngredient('Cola', 'Havana')).toThrow(
+      ConflictError,
+    );
+    expect(() => calc.renameIngredient('Cola', 'Cola')).toThrow(ConflictError);
+    expect(() => calc.renameRecipe('nope', 'x')).toThrow(NotFoundError);
+    expect(calc.getIngredients().map((i) => i.name)).toEqual([
+      'Cola',
+      'Havana',
+    ]);
   });
 });

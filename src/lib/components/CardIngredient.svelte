@@ -13,6 +13,7 @@
     onupdatePrice,
     onupdateAlcohol,
     ondelete,
+    onrename,
   }: {
     name: string;
     price: number;
@@ -20,6 +21,7 @@
     onupdatePrice: (name: string, price: number) => void;
     onupdateAlcohol: (name: string, alcohol: boolean) => void;
     ondelete: (name: string) => void;
+    onrename: (name: string, newName: string) => Promise<void>;
   } = $props();
 
   let form: HTMLFormElement;
@@ -46,7 +48,7 @@
 
 <Card ondelete={deleteIngredient} hasAlcohol={alcohol}>
   <div class="flex items-center justify-between gap-x-2">
-    <CardTitle title={name} />
+    <CardTitle title={name} onrename={(n) => onrename(name, n)} />
     <form onsubmit={(e) => e.preventDefault()} bind:this={form} class="ml-auto">
       <PricePerLInput
         class="w-24 text-right"

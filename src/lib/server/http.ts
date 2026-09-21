@@ -1,6 +1,6 @@
 import { error, json, type RequestEvent } from '@sveltejs/kit';
 import { z } from 'zod';
-import { NotFoundError } from './calc';
+import { ConflictError, NotFoundError } from './calc';
 
 /** Parses and validates a JSON request body; responds with 400 on failure. */
 export async function parseBody<T extends z.ZodType>(
@@ -27,6 +27,7 @@ export function respond<T>(fn: () => T): Response {
       : json(value);
   } catch (e) {
     if (e instanceof NotFoundError) error(404, e.message);
+    if (e instanceof ConflictError) error(409, e.message);
     if (e instanceof Error && /FOREIGN KEY constraint failed/.test(e.message)) {
       error(404, 'Referenced item does not exist');
     }

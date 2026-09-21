@@ -4,6 +4,8 @@ const name = z.string().trim().min(1).max(40);
 
 export const NameBody = z.object({ name });
 
+export const RenameBody = z.object({ name, newName: name });
+
 export const IngredientBody = z.object({
   name,
   price: z.number().min(0).max(1_000_000),
