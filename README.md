@@ -69,6 +69,8 @@ docker compose up -d --build          # http://localhost:3000, data in the `data
 ORIGIN=https://cocktail.kuhlt.de docker compose up -d --build
 ```
 
+A prebuilt image is published to Docker Hub as `kidilias/cocktailcalc:latest` on every push to `main` (see `.github/workflows/ci.yml`; requires the repository variable `DOCKERHUB_USERNAME`, the secret `DOCKERHUB_TOKEN` and optionally the variable `DOCKER_IMAGE`).
+
 The image runs as the unprivileged `node` user, stores the SQLite file under `/data` and exposes port 3000. Set `ORIGIN` to the public URL the app is served at.
 
 ## Desktop / mobile app (Tauri)
