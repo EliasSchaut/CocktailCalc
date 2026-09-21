@@ -98,7 +98,7 @@
               value={ingredient.amount}
               name="amount"
               required
-              onfocusout={(e) =>
+              onchange={(e) =>
                 upsertIngredient(
                   ingredient.name,
                   Number(e.currentTarget.value),
