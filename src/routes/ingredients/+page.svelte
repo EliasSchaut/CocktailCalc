@@ -14,6 +14,10 @@
 
   // svelte-ignore state_referenced_locally
   let ingredients: Ingredient[] = $state(data.ingredients);
+  // re-sync when load data changes (e.g. after a data import calls invalidateAll)
+  $effect(() => {
+    ingredients = data.ingredients;
+  });
   let addToggle: ToggleButton;
 
   const findIngredient = (name: string) =>

@@ -32,3 +32,22 @@ export type EventList = {
   ingredients: IngredientWithAmount[];
   price: number;
 };
+
+/** Full data dump used by export/import. */
+export type DataExport = {
+  version: 1;
+  exportedAt?: string;
+  ingredients: Ingredient[];
+  recipes: {
+    name: string;
+    description: string | null;
+    ingredients: IngredientWithAmount[];
+  }[];
+  events: { name: string; recipes: RecipeWithAmount[] }[];
+};
+
+export type ImportResult = {
+  ingredients: number;
+  recipes: number;
+  events: number;
+};

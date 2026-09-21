@@ -1,4 +1,6 @@
 import type {
+  DataExport,
+  ImportResult,
   EventList,
   EventWithRecipes,
   Ingredient,
@@ -129,3 +131,13 @@ export const call_ingredient_upsert = (
 
 export const call_ingredient_delete = (name: string) =>
   call_api<void>(Method.DELETE, '/ingredient', { name });
+
+// -------------------
+// Export / Import
+// -------------------
+export const EXPORT_URL = `${API_BASE}/export`;
+
+export const call_export = () => call_api<DataExport>(Method.GET, '/export');
+
+export const call_import = (data: DataExport, mode: 'merge' | 'replace') =>
+  call_api<ImportResult>(Method.POST, `/import?mode=${mode}`, data);

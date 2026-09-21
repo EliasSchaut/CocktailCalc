@@ -15,6 +15,10 @@
   // local, mutable copy of the loaded data; kept in sync via card callbacks
   // svelte-ignore state_referenced_locally
   let events: EventWithRecipes[] = $state(data.events);
+  // re-sync when load data changes (e.g. after a data import calls invalidateAll)
+  $effect(() => {
+    events = data.events;
+  });
   let addToggle: ToggleButton;
 
   const findEvent = (name: string) => events.find((e) => e.name === name);

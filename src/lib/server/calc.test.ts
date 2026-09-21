@@ -86,4 +86,53 @@ describe('calc service', () => {
       /FOREIGN KEY/,
     );
   });
+
+  it('exports and imports all data', () => {
+    calc.addIngredient('Rum', 20, true);
+    calc.addIngredient('Cola', 2, false);
+    calc.addRecipe('Cuba Libre', 'classic');
+    calc.addIngredientAmount('Cuba Libre', 'Rum', 5);
+    calc.addIngredientAmount('Cuba Libre', 'Cola', 15);
+    calc.addEvent('Party');
+    calc.addEventRecipe('Party', 'Cuba Libre', 10);
+
+    const dump = calc.exportAll();
+    expect(dump.version).toBe(1);
+    expect(dump.recipes).toEqual([
+      {
+        name: 'Cuba Libre',
+        description: 'classic',
+        ingredients: [
+          { name: 'Cola', amount: 15 },
+          { name: 'Rum', amount: 5 },
+        ],
+      },
+    ]);
+    expect(dump.events).toEqual([
+      { name: 'Party', recipes: [{ name: 'Cuba Libre', amount: 10 }] },
+    ]);
+
+    // merge into a fresh db with conflicting data -> prices are recalculated
+    const other = createCalcService(createDb(':memory:'));
+    other.addIngredient('Rum', 999, true);
+    other.addRecipe('Mojito', '');
+    expect(other.importAll(dump)).toEqual({
+      ingredients: 2,
+      recipes: 1,
+      events: 1,
+    });
+    expect(other.findRecipe('Cuba Libre').price).toBeCloseTo(1.3);
+    expect(other.findEvent('Party').price).toBeCloseTo(13);
+    expect(other.getRecipes().map((r) => r.name)).toEqual([
+      'Cuba Libre',
+      'Mojito',
+    ]);
+
+    // replace wipes everything first
+    expect(other.importAll(dump, true).recipes).toBe(1);
+    expect(other.getRecipes().map((r) => r.name)).toEqual(['Cuba Libre']);
+    expect(other.getIngredients().find((i) => i.name === 'Rum')?.price).toBe(
+      20,
+    );
+  });
 });

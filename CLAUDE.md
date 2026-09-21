@@ -25,6 +25,7 @@ pnpm tauri:dev|build
 - `src/lib/server/db/schema.ts` – tables; `db/client.ts` opens SQLite and runs migrations (no `$lib`/`$env` imports, used by scripts and tests)
 - `src/lib/server/calc.ts` – all business logic (`createCalcService(db)`), tests in `calc.test.ts` with `:memory:` DB
 - `src/routes/api/**/+server.ts` – REST endpoints, bodies validated with zod in `validation.ts`, errors mapped in `http.ts`
+- `src/lib/components/DataSetting.svelte` + `api/export`, `api/import` – JSON export/import of all data (service `exportAll`/`importAll`)
 - `src/lib/api.ts` – typed fetch client used by pages (`+page.ts` load) and cards
 - `src/lib/components` – Svelte components; `src/lib/icons` – inline Heroicons paths
 - `src/hooks.server.ts` – CORS for `/api` (Tauri) and security headers

@@ -2,6 +2,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { Bars3, XMark } from '$lib/icons';
   import Modal from '../Modal.svelte';
+  import DataSetting from '../DataSetting.svelte';
   import ThemeSetting from '../ThemeSetting.svelte';
 
   const pages = [
@@ -27,6 +28,9 @@
             <a href={page.href}>{page.title}</a>
           </li>
         {/each}
+        <li>
+          <DataSetting />
+        </li>
         <li>
           <ThemeSetting />
         </li>

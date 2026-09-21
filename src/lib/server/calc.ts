@@ -8,8 +8,10 @@ import {
   recipes,
 } from './db/schema.ts';
 import type {
+  DataExport,
   EventList,
   EventWithRecipes,
+  ImportResult,
   Ingredient,
   RecipeWithIngredients,
 } from '$lib/types';
@@ -314,7 +316,101 @@ export function createCalcService(db: Db) {
     return { ingredients: list, price: event.price };
   }
 
+  // ---------- export / import ----------
+
+  /** Dumps all data (prices of recipes/events are derived and therefore omitted). */
+  function exportAll(): DataExport {
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      ingredients: getIngredients(),
+      recipes: getRecipes().map(({ name, description, ingredients }) => ({
+        name,
+        description,
+        ingredients,
+      })),
+      events: getEvents().map(({ name, recipes }) => ({ name, recipes })),
+    };
+  }
+
+  /**
+   * Imports a dump. `replace` wipes all existing data first, otherwise items are
+   * merged (upserted) into the existing data. Prices are recalculated afterwards.
+   */
+  function importAll(data: DataExport, replace = false): ImportResult {
+    return db.transaction(() => {
+      if (replace) {
+        db.delete(events).run();
+        db.delete(recipes).run();
+        db.delete(ingredients).run();
+      }
+      for (const i of data.ingredients) {
+        db.insert(ingredients)
+          .values(i)
+          .onConflictDoUpdate({
+            target: ingredients.name,
+            set: { price: i.price, alcohol: i.alcohol },
+          })
+          .run();
+      }
+      for (const r of data.recipes) {
+        db.insert(recipes)
+          .values({ name: r.name, description: r.description, price: 0 })
+          .onConflictDoUpdate({
+            target: recipes.name,
+            set: { description: r.description },
+          })
+          .run();
+        for (const i of r.ingredients) {
+          db.insert(recipeIngredients)
+            .values({
+              recipeName: r.name,
+              ingredientName: i.name,
+              amount: i.amount,
+            })
+            .onConflictDoUpdate({
+              target: [
+                recipeIngredients.recipeName,
+                recipeIngredients.ingredientName,
+              ],
+              set: { amount: i.amount },
+            })
+            .run();
+        }
+      }
+      for (const e of data.events) {
+        db.insert(events)
+          .values({ name: e.name, price: 0 })
+          .onConflictDoNothing()
+          .run();
+        for (const r of e.recipes) {
+          db.insert(eventRecipes)
+            .values({ eventName: e.name, recipeName: r.name, amount: r.amount })
+            .onConflictDoUpdate({
+              target: [eventRecipes.eventName, eventRecipes.recipeName],
+              set: { amount: r.amount },
+            })
+            .run();
+        }
+      }
+      // recalculating every recipe also refreshes all event prices
+      for (const { name } of db
+        .select({ name: recipes.name })
+        .from(recipes)
+        .all()) {
+        updateRecipePrice(name);
+      }
+      return {
+        ingredients: data.ingredients.length,
+        recipes: data.recipes.length,
+        events: data.events.length,
+      };
+    });
+  }
+
   return {
+    exportAll,
+    importAll,
     getIngredients,
     addIngredient,
     deleteIngredient,

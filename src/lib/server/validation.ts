@@ -33,3 +33,32 @@ export const EventRecipeBody = z.object({
 });
 
 export const DeleteEventRecipeBody = z.object({ event: name, recipe: name });
+
+const withAmount = z.object({ name, amount: z.number().min(0).max(10_000) });
+
+export const DataExportBody = z.object({
+  version: z.literal(1),
+  exportedAt: z.string().optional(),
+  ingredients: z.array(
+    z.object({
+      name,
+      price: z.number().min(0).max(1_000_000),
+      alcohol: z.boolean(),
+    }),
+  ),
+  recipes: z.array(
+    z.object({
+      name,
+      description: z.string().max(1000).nullable().default(null),
+      ingredients: z.array(withAmount),
+    }),
+  ),
+  events: z.array(
+    z.object({
+      name,
+      recipes: z.array(
+        withAmount.extend({ amount: z.number().int().min(0).max(10_000) }),
+      ),
+    }),
+  ),
+});
