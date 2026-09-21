@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    image: cocktailcalc
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      # public URL the app is reached at (needed for correct absolute URLs)
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
+    volumes:
+      - data:/data
+
+volumes:
+  data:

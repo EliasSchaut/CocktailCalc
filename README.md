@@ -60,6 +60,15 @@ ORIGIN=https://cocktail.kuhlt.de PORT=3000 DATABASE_URL=/data/db.sqlite3 node bu
 
 `build/` contains a self-contained Node server (SvelteKit `adapter-node`). Keep `node_modules` (production dependencies) and `drizzle/` next to it.
 
+### Docker
+
+```sh
+docker compose up -d --build          # http://localhost:3000, data in the `data` volume
+ORIGIN=https://cocktail.kuhlt.de docker compose up -d --build
+```
+
+The image runs as the unprivileged `node` user, stores the SQLite file under `/data` and exposes port 3000. Set `ORIGIN` to the public URL the app is served at.
+
 ## Desktop / mobile app (Tauri)
 
 The app is a thin shell: the SvelteKit frontend is bundled statically and talks to a hosted server via the REST API under `/api`.
