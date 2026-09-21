@@ -56,10 +56,17 @@
         onchange={updatePrice}
       />
     </form>
-    <button type="button" onclick={toggleAlcohol} title="Enthält Alkohol?">
+    <button
+      type="button"
+      class="rounded-md p-1 hover:bg-secondary-100 dark:hover:bg-secondary-800"
+      onclick={toggleAlcohol}
+      title="Enthält Alkohol?"
+    >
       <Icon
         icon={PercentBadge}
-        class="h-6 w-6 {alcohol ? 'text-red-500' : 'text-secondary-500'}"
+        class="h-6 w-6 {alcohol
+          ? 'text-red-500 hover:text-red-600'
+          : 'text-secondary-500 hover:text-secondary-700 dark:hover:text-secondary-300'}"
       />
     </button>
   </div>

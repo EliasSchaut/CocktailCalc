@@ -70,4 +70,10 @@
   a {
     @apply hover:underline;
   }
+
+  /* Tailwind 4 no longer sets cursor: pointer on buttons */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
 }
