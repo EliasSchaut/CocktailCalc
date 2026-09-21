@@ -24,9 +24,7 @@
 
   let form: HTMLFormElement;
 
-  async function updatePrice(
-    e: FocusEvent & { currentTarget: HTMLInputElement },
-  ) {
+  async function updatePrice(e: Event & { currentTarget: HTMLInputElement }) {
     if (!form.reportValidity()) return;
     const newPrice = parseFloat(e.currentTarget.value);
     if (isNaN(newPrice) || newPrice === price) return;
@@ -53,7 +51,7 @@
       <PricePerLInput
         class="w-24 text-right"
         value={price.toFixed(2)}
-        onfocusout={updatePrice}
+        onchange={updatePrice}
       />
     </form>
     <button type="button" onclick={toggleAlcohol} title="Enthält Alkohol?">

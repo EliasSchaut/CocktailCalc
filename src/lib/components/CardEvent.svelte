@@ -121,7 +121,7 @@
               value={recipe.amount}
               name="amount"
               required
-              onfocusout={(e) =>
+              onchange={(e) =>
                 upsertRecipe(recipe.name, Number(e.currentTarget.value))}
             />
             <MinusButton
