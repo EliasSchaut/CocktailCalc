@@ -26,6 +26,7 @@
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.3",
     "mode-watcher": "^1.1.0",
+    "svelte-dnd-action": "^0.9.79",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -156,3 +156,21 @@ export const call_recipe_rename = (name: string, newName: string) =>
 
 export const call_event_rename = (name: string, newName: string) =>
   call_api<EventWithRecipes>(Method.POST, '/event/rename', { name, newName });
+
+// -------------------
+// Ordering
+// -------------------
+export const call_recipe_order_ingredients = (
+  recipe: string,
+  order: string[],
+) =>
+  call_api<RecipeWithIngredients>(Method.POST, '/recipe/ingredients/order', {
+    recipe,
+    order,
+  });
+
+export const call_event_order_recipes = (event: string, order: string[]) =>
+  call_api<EventWithRecipes>(Method.POST, '/event/recipes/order', {
+    event,
+    order,
+  });

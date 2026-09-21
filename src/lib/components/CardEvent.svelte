@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { flip } from 'svelte/animate';
+  import { dndzone, type DndEvent } from 'svelte-dnd-action';
   import {
     call_event_delete,
     call_event_delete_recipe,
     call_event_ingredient_list,
+    call_event_order_recipes,
     call_event_upsert_recipe,
   } from '$lib/api';
   import Icon from '$lib/icons/Icon.svelte';
@@ -11,6 +14,7 @@
   import type { IngredientWithAmount, RecipeWithAmount } from '$lib/types';
   import Card from './Card.svelte';
   import CardTitle from './CardTitle.svelte';
+  import DragHandle from './DragHandle.svelte';
   import SelectItems from './SelectItems.svelte';
   import MinusButton from './button/MinusButton.svelte';
   import PlusButton from './button/PlusButton.svelte';
@@ -22,6 +26,7 @@
 
   type UpsertRecipe = { event: string; recipe: string; amount: number };
   type DeleteRecipe = { event: string; recipe: string };
+  type Item = RecipeWithAmount & { id: string };
 
   let {
     name,
@@ -34,6 +39,7 @@
     onrename,
     onupsertRecipe,
     ondeleteRecipe,
+    onreorder,
   }: {
     name: string;
     price: number;
@@ -47,11 +53,33 @@
     onrename: (name: string, newName: string) => Promise<void>;
     onupsertRecipe: (upsert: UpsertRecipe) => void;
     ondeleteRecipe: (del: DeleteRecipe) => void;
+    onreorder: (event: string, order: string[]) => void;
   } = $props();
 
   let ingredientList: IngredientWithAmount[] = $state([]);
   let copied = $state(false);
   const amountSum = $derived(recipes.reduce((acc, r) => acc + r.amount, 0));
+
+  // local copy for drag and drop, kept in sync with the prop
+  let items: Item[] = $state([]);
+  $effect(() => {
+    items = recipes.map((r) => ({ ...r, id: r.name }));
+  });
+  let dragDisabled = $state(true);
+
+  function consider(e: CustomEvent<DndEvent<Item>>) {
+    items = e.detail.items;
+  }
+
+  async function finalize(e: CustomEvent<DndEvent<Item>>) {
+    items = e.detail.items;
+    dragDisabled = true;
+    const order = items.map((r) => r.name);
+    if (order.join('\u0000') === recipes.map((r) => r.name).join('\u0000'))
+      return;
+    await call_event_order_recipes(name, order);
+    onreorder(name, order);
+  }
 
   $effect(() => {
     updateIngredientList();
@@ -109,44 +137,59 @@
       suffix="({price.toFixed(2)}€)"
       onrename={(n) => onrename(name, n)}
     />
-    <ul class="mt-2 flex w-full grow flex-col justify-between gap-y-1">
-      {#each recipes as recipe (recipe.name)}
-        <li>
-          <form
-            onsubmit={(e) => e.preventDefault()}
-            class="flex items-center gap-x-3"
-          >
-            <ItemTitle
-              title={recipe.name}
-              class={alcoholicRecipes.includes(recipe.name)
-                ? 'text-red-600 dark:text-red-400'
-                : ''}
-            />
-            <AmountInput
-              class="w-16"
-              value={recipe.amount}
-              name="amount"
-              required
-              onchange={(e) =>
-                upsertRecipe(recipe.name, Number(e.currentTarget.value))}
-            />
-            <MinusButton
-              type="button"
-              class="ml-4"
-              title="Rezept entfernen"
-              onclick={() => deleteRecipe(recipe.name)}
-            />
-          </form>
-        </li>
-      {/each}
+    <div class="mt-2 flex w-full grow flex-col justify-between gap-y-1">
+      <ul
+        class="flex flex-col gap-y-1"
+        use:dndzone={{
+          items,
+          dragDisabled,
+          flipDurationMs: 150,
+          dropTargetStyle: {},
+          // unique type per card so rows cannot be dropped into another event
+          type: `event:${name}`,
+        }}
+        onconsider={consider}
+        onfinalize={finalize}
+      >
+        {#each items as recipe (recipe.id)}
+          <li animate:flip={{ duration: 150 }}>
+            <form
+              onsubmit={(e) => e.preventDefault()}
+              class="flex items-center gap-x-3"
+            >
+              <DragHandle onpointerdown={() => (dragDisabled = false)} />
+              <ItemTitle
+                title={recipe.name}
+                class={alcoholicRecipes.includes(recipe.name)
+                  ? 'text-red-600 dark:text-red-400'
+                  : ''}
+              />
+              <AmountInput
+                class="w-16"
+                value={recipe.amount}
+                name="amount"
+                required
+                onchange={(e) =>
+                  upsertRecipe(recipe.name, Number(e.currentTarget.value))}
+              />
+              <MinusButton
+                type="button"
+                class="ml-4"
+                title="Rezept entfernen"
+                onclick={() => deleteRecipe(recipe.name)}
+              />
+            </form>
+          </li>
+        {/each}
+      </ul>
       {#if recipes.length > 0}
         <LineSeparator class="my-3" />
-        <li class="-mb-3 flex items-center gap-x-3">
+        <div class="-mb-3 flex items-center gap-x-3">
           <ItemTitle class="font-semibold" title="Summe" />
           <ItemAmount class="mr-10" amount={amountSum} />
-        </li>
+        </div>
       {/if}
-      <li class="mt-auto">
+      <div class="mt-auto">
         <LineSeparator class="my-3" title="Rezept hinzufügen" />
         <form onsubmit={addRecipe} class="flex gap-x-3">
           <SelectItems options={recipeNames} name="recipe" />
@@ -180,7 +223,7 @@
             {/each}
           </div>
         {/if}
-      </li>
-    </ul>
+      </div>
+    </div>
   </div>
 </Card>

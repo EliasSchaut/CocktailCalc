@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Db } from './db/client.ts';
 import {
   eventRecipes,
@@ -90,6 +90,58 @@ export function createCalcService(db: Db) {
       .map((r) => r.eventName);
   }
 
+  /** SQL expression for the next free position in a junction table, scoped by `where`. */
+  function nextPosition(
+    table: typeof recipeIngredients | typeof eventRecipes,
+    where: ReturnType<typeof eq>,
+  ) {
+    return sql<number>`(select coalesce(max(${table.position}), 0) + 1 from ${table} where ${where})`;
+  }
+
+  // ---------- ordering ----------
+
+  /** Sets the display order of a recipe's ingredients; names not listed keep their position. */
+  function reorderRecipeIngredients(
+    recipe: string,
+    order: string[],
+  ): RecipeWithIngredients {
+    return db.transaction(() => {
+      order.forEach((ingredient, idx) => {
+        db.update(recipeIngredients)
+          .set({ position: idx + 1 })
+          .where(
+            and(
+              eq(recipeIngredients.recipeName, recipe),
+              eq(recipeIngredients.ingredientName, ingredient),
+            ),
+          )
+          .run();
+      });
+      return findRecipe(recipe);
+    });
+  }
+
+  /** Sets the display order of an event's recipes; names not listed keep their position. */
+  function reorderEventRecipes(
+    event: string,
+    order: string[],
+  ): EventWithRecipes {
+    return db.transaction(() => {
+      order.forEach((recipe, idx) => {
+        db.update(eventRecipes)
+          .set({ position: idx + 1 })
+          .where(
+            and(
+              eq(eventRecipes.eventName, event),
+              eq(eventRecipes.recipeName, recipe),
+            ),
+          )
+          .run();
+      });
+      return findEvent(event);
+    });
+  }
+
   // ---------- ingredients ----------
 
   function getIngredients(): Ingredient[] {
@@ -137,22 +189,29 @@ export function createCalcService(db: Db) {
       description: row.description,
       price: row.price,
       alcohol: row.alcohol,
-      ingredients: row.ingredients
-        .map((i) => ({ name: i.ingredientName, amount: i.amount }))
-        .sort(byName),
+      ingredients: row.ingredients.map((i) => ({
+        name: i.ingredientName,
+        amount: i.amount,
+      })),
     };
   }
 
   function getRecipes(): RecipeWithIngredients[] {
     return db.query.recipes
-      .findMany({ with: { ingredients: true }, orderBy: asc(recipes.name) })
+      .findMany({
+        with: { ingredients: { orderBy: asc(recipeIngredients.position) } },
+        orderBy: asc(recipes.name),
+      })
       .sync()
       .map(toRecipe);
   }
 
   function findRecipe(name: string): RecipeWithIngredients {
     const row = db.query.recipes
-      .findFirst({ where: eq(recipes.name, name), with: { ingredients: true } })
+      .findFirst({
+        where: eq(recipes.name, name),
+        with: { ingredients: { orderBy: asc(recipeIngredients.position) } },
+      })
       .sync();
     if (!row) throw new NotFoundError(`recipe "${name}" not found`);
     return toRecipe(row);
@@ -173,7 +232,15 @@ export function createCalcService(db: Db) {
   ): RecipeWithIngredients {
     return db.transaction(() => {
       db.insert(recipeIngredients)
-        .values({ recipeName: recipe, ingredientName: ingredient, amount })
+        .values({
+          recipeName: recipe,
+          ingredientName: ingredient,
+          amount,
+          position: nextPosition(
+            recipeIngredients,
+            eq(recipeIngredients.recipeName, recipe),
+          ),
+        })
         .onConflictDoUpdate({
           target: [
             recipeIngredients.recipeName,
@@ -225,22 +292,29 @@ export function createCalcService(db: Db) {
     return {
       name: row.name,
       price: row.price,
-      recipes: row.recipes
-        .map((r) => ({ name: r.recipeName, amount: r.amount }))
-        .sort(byName),
+      recipes: row.recipes.map((r) => ({
+        name: r.recipeName,
+        amount: r.amount,
+      })),
     };
   }
 
   function getEvents(): EventWithRecipes[] {
     return db.query.events
-      .findMany({ with: { recipes: true }, orderBy: asc(events.name) })
+      .findMany({
+        with: { recipes: { orderBy: asc(eventRecipes.position) } },
+        orderBy: asc(events.name),
+      })
       .sync()
       .map(toEvent);
   }
 
   function findEvent(name: string): EventWithRecipes {
     const row = db.query.events
-      .findFirst({ where: eq(events.name, name), with: { recipes: true } })
+      .findFirst({
+        where: eq(events.name, name),
+        with: { recipes: { orderBy: asc(eventRecipes.position) } },
+      })
       .sync();
     if (!row) throw new NotFoundError(`event "${name}" not found`);
     return toEvent(row);
@@ -258,7 +332,15 @@ export function createCalcService(db: Db) {
   ): EventWithRecipes {
     return db.transaction(() => {
       db.insert(eventRecipes)
-        .values({ eventName: event, recipeName: recipe, amount })
+        .values({
+          eventName: event,
+          recipeName: recipe,
+          amount,
+          position: nextPosition(
+            eventRecipes,
+            eq(eventRecipes.eventName, event),
+          ),
+        })
         .onConflictDoUpdate({
           target: [eventRecipes.eventName, eventRecipes.recipeName],
           set: { amount },
@@ -452,19 +534,20 @@ export function createCalcService(db: Db) {
             set: { description: r.description },
           })
           .run();
-        for (const i of r.ingredients) {
+        for (const [idx, i] of r.ingredients.entries()) {
           db.insert(recipeIngredients)
             .values({
               recipeName: r.name,
               ingredientName: i.name,
               amount: i.amount,
+              position: idx + 1,
             })
             .onConflictDoUpdate({
               target: [
                 recipeIngredients.recipeName,
                 recipeIngredients.ingredientName,
               ],
-              set: { amount: i.amount },
+              set: { amount: i.amount, position: idx + 1 },
             })
             .run();
         }
@@ -474,12 +557,17 @@ export function createCalcService(db: Db) {
           .values({ name: e.name, price: 0 })
           .onConflictDoNothing()
           .run();
-        for (const r of e.recipes) {
+        for (const [idx, r] of e.recipes.entries()) {
           db.insert(eventRecipes)
-            .values({ eventName: e.name, recipeName: r.name, amount: r.amount })
+            .values({
+              eventName: e.name,
+              recipeName: r.name,
+              amount: r.amount,
+              position: idx + 1,
+            })
             .onConflictDoUpdate({
               target: [eventRecipes.eventName, eventRecipes.recipeName],
-              set: { amount: r.amount },
+              set: { amount: r.amount, position: idx + 1 },
             })
             .run();
         }
@@ -500,6 +588,8 @@ export function createCalcService(db: Db) {
   }
 
   return {
+    reorderRecipeIngredients,
+    reorderEventRecipes,
     renameIngredient,
     renameRecipe,
     renameEvent,

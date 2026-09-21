@@ -24,9 +24,10 @@ describe('calc service', () => {
     // (5*20 + 15*2) / 100 = 1.30 €
     expect(recipe.price).toBeCloseTo(1.3);
     expect(recipe.alcohol).toBe(true);
+    // creation order, not alphabetical
     expect(recipe.ingredients).toEqual([
-      { name: 'Cola', amount: 15 },
       { name: 'Rum', amount: 5 },
+      { name: 'Cola', amount: 15 },
     ]);
 
     calc.addEvent('Party');
@@ -108,8 +109,8 @@ describe('calc service', () => {
         name: 'Cuba Libre',
         description: 'classic',
         ingredients: [
-          { name: 'Cola', amount: 15 },
           { name: 'Rum', amount: 5 },
+          { name: 'Cola', amount: 15 },
         ],
       },
     ]);
@@ -186,5 +187,56 @@ describe('calc service', () => {
       'Cola',
       'Havana',
     ]);
+  });
+
+  it('orders by creation and allows reordering', () => {
+    for (const n of ['A', 'B', 'C']) calc.addIngredient(n, 1, false);
+    calc.addRecipe('R', '');
+    for (const n of ['B', 'C', 'A']) calc.addIngredientAmount('R', n, 1);
+    expect(calc.findRecipe('R').ingredients.map((i) => i.name)).toEqual([
+      'B',
+      'C',
+      'A',
+    ]);
+    // updating an amount keeps the position
+    calc.addIngredientAmount('R', 'B', 9);
+    expect(calc.findRecipe('R').ingredients.map((i) => i.name)).toEqual([
+      'B',
+      'C',
+      'A',
+    ]);
+
+    const reordered = calc.reorderRecipeIngredients('R', ['A', 'B', 'C']);
+    expect(reordered.ingredients.map((i) => i.name)).toEqual(['A', 'B', 'C']);
+    // new ingredients are appended
+    calc.addIngredient('D', 1, false);
+    calc.addIngredientAmount('R', 'D', 1);
+    expect(calc.findRecipe('R').ingredients.map((i) => i.name)).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+    ]);
+
+    calc.addRecipe('S', '');
+    calc.addEvent('E');
+    calc.addEventRecipe('E', 'S', 1);
+    calc.addEventRecipe('E', 'R', 1);
+    expect(calc.findEvent('E').recipes.map((r) => r.name)).toEqual(['S', 'R']);
+    expect(
+      calc.reorderEventRecipes('E', ['R', 'S']).recipes.map((r) => r.name),
+    ).toEqual(['R', 'S']);
+
+    // export keeps the order and import restores it
+    const dump = calc.exportAll();
+    const other = createCalcService(createDb(':memory:'));
+    other.importAll(dump);
+    expect(other.findRecipe('R').ingredients.map((i) => i.name)).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+    ]);
+    expect(other.findEvent('E').recipes.map((r) => r.name)).toEqual(['R', 'S']);
   });
 });

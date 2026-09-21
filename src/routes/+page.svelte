@@ -44,6 +44,15 @@
     if (event) event.name = newName;
   }
 
+  function reorderRecipes(name: string, order: string[]) {
+    const event = findEvent(name);
+    if (!event) return;
+    const pos = new Map(order.map((n, i) => [n, i]));
+    event.recipes = [...event.recipes].sort(
+      (a, b) => (pos.get(a.name) ?? Infinity) - (pos.get(b.name) ?? Infinity),
+    );
+  }
+
   function deleteEvent(name: string) {
     events = events.filter((e) => e.name !== name);
   }
@@ -92,6 +101,7 @@
         onupdatePrice={updatePrice}
         ondelete={deleteEvent}
         onrename={renameEvent}
+        onreorder={reorderRecipes}
         onupsertRecipe={upsertEventRecipe}
         ondeleteRecipe={deleteEventRecipe}
       />

@@ -64,3 +64,12 @@ export const DataExportBody = z.object({
     }),
   ),
 });
+
+export const RecipeOrderBody = z.object({
+  recipe: name,
+  order: z.array(name).max(500),
+});
+export const EventOrderBody = z.object({
+  event: name,
+  order: z.array(name).max(500),
+});
